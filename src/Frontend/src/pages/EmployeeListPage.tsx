@@ -17,40 +17,82 @@ import {
 import { useEffect, useState } from "react";
 import { EmployeeListQuery } from "../types/employee";
 
+const EMPLOYEES_API = "/api/employees";
+const EMPLOYEES_LIST_API = `${EMPLOYEES_API}/list`;
+
 export default function EmployeeListPage() {
   const [list, setList] = useState<EmployeeListQuery[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null); // 🆕 stato per l'errore
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
 
+  //API return all employees
   useEffect(() => {
-    fetch("/api/employees/list")
+    fetch(EMPLOYEES_LIST_API)
       .then((response) => {
+        if (!response.ok) throw new Error(`Errore: ${response.status}`);
         return response.json();
       })
       .then((data) => {
         setList(data as EmployeeListQuery[]);
       })
+      .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
   }, []);
+
+  //API get searched employees
+  //todo: edit BE search for optimize UX/UI experience
+  useEffect(() => {
+    setLoading(true);
+    const timer = setTimeout(() => {
+      const queryParams = new URLSearchParams();
+      if (firstName) queryParams.append("FirstName", firstName);
+      if (lastName) queryParams.append("LastName", lastName);
+
+      const queryString = queryParams.toString();
+      const url = `${EMPLOYEES_LIST_API}${queryString ? `?${queryString}` : ""}`;
+      console.log(url);
+
+      fetch(url)
+        .then((response) => response.json())
+        .then((data) => setList(data as EmployeeListQuery[]))
+        .finally(() => setLoading(false));
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [firstName, lastName]);
 
   return (
     <>
       <Typography variant="h4" sx={{ textAlign: "center", mt: 4, mb: 4 }}>
         Employees
       </Typography>
+
       <Stack
         direction="row"
         alignItems="center"
         justifyContent="space-between"
         sx={{ mb: 2, mt: 2, width: "100%" }}
       >
-        <TextField
-          variant="outlined"
-          placeholder="First Name or Last Name..."
-          id="outlined-basic"
-          label="First Name or Last Name"
-          size="small"
-          sx={{ width: "20%" }}
-        />
+        <Stack direction="row" gap={2}>
+          <TextField
+            variant="outlined"
+            placeholder="First Name..."
+            label="First Name"
+            size="small"
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+          />
+          <TextField
+            variant="outlined"
+            placeholder="Last Name..."
+            label="Last Name"
+            size="small"
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+          />
+        </Stack>
         <Button variant="contained">Export</Button>
       </Stack>
 
@@ -77,8 +119,21 @@ export default function EmployeeListPage() {
                   </Stack>
                 </TableCell>
               </TableRow>
+            ) : error ? ( // 🆕 stato di errore
+              <TableRow>
+                <TableCell colSpan={8}>
+                  <Stack alignItems="center" spacing={2} sx={{ py: 6 }}>
+                    <Typography variant="h6" color="text.secondary">
+                      Oops, something went wrong
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Try reloading page
+                    </Typography>
+                  </Stack>
+                </TableCell>
+              </TableRow>
             ) : list.length === 0 ? (
-              //No data
+              // No data
               <TableRow>
                 <TableCell colSpan={8}>
                   <Stack alignItems="center" sx={{ py: 6 }}>
