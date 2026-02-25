@@ -16,6 +16,7 @@ import {
 } from "@mui/material";
 import { useEffect, useState } from "react";
 import { EmployeeListQuery } from "../types/employee";
+import { useExportXML } from "../hooks/useExportXML";
 
 const EMPLOYEES_API = "/api/employees";
 const EMPLOYEES_LIST_API = `${EMPLOYEES_API}/list`;
@@ -23,9 +24,11 @@ const EMPLOYEES_LIST_API = `${EMPLOYEES_API}/list`;
 export default function EmployeeListPage() {
   const [list, setList] = useState<EmployeeListQuery[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null); // 🆕 stato per l'errore
+  const [error, setError] = useState<string | null>(null);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+
+  const { exportToXML, isExporting } = useExportXML<EmployeeListQuery>();
 
   //API return all employees
   useEffect(() => {
@@ -63,6 +66,19 @@ export default function EmployeeListPage() {
     return () => clearTimeout(timer);
   }, [firstName, lastName]);
 
+  //XML export function
+  const handleExportWithMetadata = () => {
+    exportToXML(list, {
+      filename: `employees_${new Date().toISOString().split("T")[0]}.xml`,
+      rootElement: "Employees",
+      itemElement: "Employee",
+      includeMetadata: false, 
+      companyName: "InfoMinds", 
+      exportedBy: "Fabio_Curci", 
+      version: "1.0", 
+    });
+  };
+
   return (
     <>
       <Typography variant="h4" sx={{ textAlign: "center", mt: 4, mb: 4 }}>
@@ -93,7 +109,13 @@ export default function EmployeeListPage() {
             onChange={(e) => setLastName(e.target.value)}
           />
         </Stack>
-        <Button variant="contained">Export</Button>
+        <Button
+          variant="contained"
+          onClick={handleExportWithMetadata}
+          disabled={loading || list.length === 0 || isExporting}
+        >
+          {isExporting ? "Esportazione..." : "Export"}
+        </Button>
       </Stack>
 
       <TableContainer component={Paper}>
@@ -119,7 +141,7 @@ export default function EmployeeListPage() {
                   </Stack>
                 </TableCell>
               </TableRow>
-            ) : error ? ( // 🆕 stato di errore
+            ) : error ? ( 
               <TableRow>
                 <TableCell colSpan={8}>
                   <Stack alignItems="center" spacing={2} sx={{ py: 6 }}>
