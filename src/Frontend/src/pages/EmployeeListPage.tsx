@@ -1,30 +1,17 @@
-import {
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Typography,
-  styled,
-  tableCellClasses,
-  CircularProgress,
-  TextField,
-  Button,
-  Stack,
-} from "@mui/material";
 import { useEffect, useState } from "react";
 import { EmployeeListQuery } from "../types/employee";
 import { useExportXML } from "../hooks/useExportXML";
+import DataTable from "../components/DataTable";
+import { SearchField, TableColumn } from "../types/table";
+import Header from "../components/ui/Header";
 
-const EMPLOYEES_API = "/api/employees";
-const EMPLOYEES_LIST_API = `${EMPLOYEES_API}/list`;
+const EMPLOYEES_API: string = "/api/employees";
+const EMPLOYEES_LIST_API: string = `${EMPLOYEES_API}/list`;
 
 export default function EmployeeListPage() {
   const [list, setList] = useState<EmployeeListQuery[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<boolean | string>(false);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
 
@@ -66,130 +53,120 @@ export default function EmployeeListPage() {
     return () => clearTimeout(timer);
   }, [firstName, lastName]);
 
-  //XML export function
-  const handleExportWithMetadata = () => {
-    exportToXML(list, {
-      filename: `employees_${new Date().toISOString().split("T")[0]}.xml`,
-      rootElement: "Employees",
-      itemElement: "Employee",
-      includeMetadata: false, 
-      companyName: "InfoMinds", 
-      exportedBy: "Fabio_Curci", 
-      version: "1.0", 
-    });
+  const columns: TableColumn<EmployeeListQuery>[] = [
+    {
+      field: "code",
+      headerName: "Code",
+      renderCell: (row) => row.code,
+    },
+    {
+      field: "firstName",
+      headerName: "FirstName",
+      renderCell: (row) => row.firstName,
+    },
+    {
+      field: "lastName",
+      headerName: "LastName",
+      renderCell: (row) => row.lastName,
+    },
+    {
+      field: "address",
+      headerName: "Address",
+      renderCell: (row) => row.address,
+    },
+    {
+      field: "email",
+      headerName: "Email",
+      renderCell: (row) => row.email,
+    },
+    {
+      field: "phone",
+      headerName: "Phone",
+      renderCell: (row) => row.phone,
+    },
+    {
+      field: "department.code",
+      headerName: "Dep. Code",
+      renderCell: (row) => row.department?.code || "-",
+    },
+    {
+      field: "department.description",
+      headerName: "Dep. Description",
+      renderCell: (row) => row.department?.description || "-",
+    },
+  ];
+
+  // Config search field
+  const searchFields: SearchField[] = [
+    {
+      name: "firstName",
+      label: "First Name",
+      placeholder: "First Name...",
+      value: firstName,
+      onChange: setFirstName,
+    },
+    {
+      name: "lastName",
+      label: "Last Name",
+      placeholder: "Last Name...",
+      value: lastName,
+      onChange: setLastName,
+    },
+  ];
+
+  // ✅ XML export function with metadata
+  const handleExport = async () => {
+    //isExporting(true);
+    try {
+      // Filtra la lista in base ai criteri di ricerca (opzionale)
+      const filteredList = list.filter((employee) => {
+        // Se firstName della ricerca esiste, controlla il match, altrimenti passa true
+        const matchFirstName = firstName
+          ? employee.firstName?.toLowerCase().includes(firstName.toLowerCase())
+          : true;
+
+        // Stessa logica per lastName
+        const matchLastName = lastName
+          ? employee.lastName?.toLowerCase().includes(lastName.toLowerCase())
+          : true;
+
+        return matchFirstName && matchLastName;
+      });
+
+      exportToXML(filteredList, {
+        filename: `employees_${new Date().toISOString().split("T")[0]}.xml`,
+        rootElement: "Employees",
+        itemElement: "Employee",
+        includeMetadata: true,
+        companyName: "InfoMinds",
+        exportedBy: "Fabio_Curci",
+        version: "1.0",
+      });
+
+      alert(`Export complete! ${filteredList.length} record exported.`);
+    } finally {
+      //setIsExporting(false);
+    }
   };
 
   return (
     <>
-      <Typography variant="h4" sx={{ textAlign: "center", mt: 4, mb: 4 }}>
-        Employees
-      </Typography>
+      <Header title="Employees" />
 
-      <Stack
-        direction="row"
-        alignItems="center"
-        justifyContent="space-between"
-        sx={{ mb: 2, mt: 2, width: "100%" }}
-      >
-        <Stack direction="row" gap={2}>
-          <TextField
-            variant="outlined"
-            placeholder="First Name..."
-            label="First Name"
-            size="small"
-            value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
-          />
-          <TextField
-            variant="outlined"
-            placeholder="Last Name..."
-            label="Last Name"
-            size="small"
-            value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
-          />
-        </Stack>
-        <Button
-          variant="contained"
-          onClick={handleExportWithMetadata}
-          disabled={loading || list.length === 0 || isExporting}
-        >
-          {isExporting ? "Esportazione..." : "Export"}
-        </Button>
-      </Stack>
-
-      <TableContainer component={Paper}>
-        <Table sx={{ minWidth: 650 }} aria-label="simple table">
-          <TableHead>
-            <TableRow>
-              <StyledTableHeadCell>Code</StyledTableHeadCell>
-              <StyledTableHeadCell>FirstName</StyledTableHeadCell>
-              <StyledTableHeadCell>LastName</StyledTableHeadCell>
-              <StyledTableHeadCell>Address</StyledTableHeadCell>
-              <StyledTableHeadCell>Email</StyledTableHeadCell>
-              <StyledTableHeadCell>Phone</StyledTableHeadCell>
-              <StyledTableHeadCell>Dep. Code</StyledTableHeadCell>
-              <StyledTableHeadCell>Dep. Description</StyledTableHeadCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={8}>
-                  <Stack alignItems="center" sx={{ py: 6 }}>
-                    <CircularProgress />
-                  </Stack>
-                </TableCell>
-              </TableRow>
-            ) : error ? ( 
-              <TableRow>
-                <TableCell colSpan={8}>
-                  <Stack alignItems="center" spacing={2} sx={{ py: 6 }}>
-                    <Typography variant="h6" color="text.secondary">
-                      Oops, something went wrong
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Try reloading page
-                    </Typography>
-                  </Stack>
-                </TableCell>
-              </TableRow>
-            ) : list.length === 0 ? (
-              // No data
-              <TableRow>
-                <TableCell colSpan={8}>
-                  <Stack alignItems="center" sx={{ py: 6 }}>
-                    <Typography color="text.secondary">No data</Typography>
-                  </Stack>
-                </TableCell>
-              </TableRow>
-            ) : (
-              list.map((row) => (
-                <TableRow
-                  key={row.id}
-                  sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
-                >
-                  <TableCell>{row.code}</TableCell>
-                  <TableCell>{row.firstName}</TableCell>
-                  <TableCell>{row.lastName}</TableCell>
-                  <TableCell>{row.address}</TableCell>
-                  <TableCell>{row.email}</TableCell>
-                  <TableCell>{row.phone}</TableCell>
-                  <TableCell>{row.department?.code}</TableCell>
-                  <TableCell>{row.department?.description}</TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      <DataTable
+        columns={columns}
+        data={list}
+        loading={loading}
+        error={error}
+        config={{
+          showSearch: true,
+          searchFields: searchFields,
+          showExport: true,
+          onExport: handleExport,
+          exportLabel: "Export",
+          isExporting: isExporting,
+        }}
+      />
     </>
   );
 }
-
-const StyledTableHeadCell = styled(TableCell)(({ theme }) => ({
-  [`&.${tableCellClasses.head}`]: {
-    backgroundColor: theme.palette.primary.light,
-    color: theme.palette.common.white,
-  },
-}));
