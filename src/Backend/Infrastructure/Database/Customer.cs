@@ -37,6 +37,7 @@ class CustomerSeeding : SeedEntity<BackendContext, Customer>
         CustomerCategoryIdList.Add(null);
     }
 
+    //generate fake customers
     protected override IEnumerable<Customer> GetSeedItems()
     {
         for (var i = 0; i < 500; i++)
