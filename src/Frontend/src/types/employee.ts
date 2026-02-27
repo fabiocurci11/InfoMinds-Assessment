@@ -1,15 +1,15 @@
 export interface EmployeeDepartment {
-  code: string;
-  description: string;
+  code: string | null;
+  description: string | null;
 }
 
 export interface EmployeeListQuery {
   id: number;
-  code: string;
-  firstName: string;
-  lastName: string;
-  address: string;
-  email: string;
-  phone: string;
+  code: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  address: string | null;
+  email: string | null;
+  phone: string | null;
   department: EmployeeDepartment | null;
 }
