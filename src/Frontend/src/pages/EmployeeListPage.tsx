@@ -1,157 +1,76 @@
-import { useEffect, useState } from "react";
+import { useState, useMemo } from "react"; // Aggiunto useMemo
 import { EmployeeListQuery } from "../types/employee";
 import { useExportXML } from "../hooks/useExportXML";
-import DataTable from "../components/DataTable";
+import { useFetch } from "../hooks/useFetch";
+import DataTable from "../components/ui/Table/DataTable";
 import { SearchField, TableColumn } from "../types/table";
 import Header from "../components/ui/Header";
+import AppToast from "../components/ui/AppToast";
 
-const EMPLOYEES_API: string = "/api/employees";
-const EMPLOYEES_LIST_API: string = `${EMPLOYEES_API}/list`;
+const PAGE_TITLE: string = "Employees"
+const EMPLOYEES_LIST_API = "/api/employees/list";
 
 export default function EmployeeListPage() {
-  const [list, setList] = useState<EmployeeListQuery[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<boolean | string>(false);
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
+  const [firstName, setFirstName] = useState<string>("");
+  const [lastName, setLastName] = useState<string>("");
+  const [toast, setToast] = useState({ open: false, message: "" });
 
+  //memo filters params
+  const fetchParams = useMemo(() => ({
+    FirstName: firstName,
+    LastName: lastName,
+  }), [firstName, lastName]);
+
+  //handle get and filter API 
+  const { data: list, loading, error,} = useFetch<EmployeeListQuery>(EMPLOYEES_LIST_API, fetchParams);
+
+  //custom hook to export XML
   const { exportToXML, isExporting } = useExportXML<EmployeeListQuery>();
 
-  //API return all employees
-  useEffect(() => {
-    fetch(EMPLOYEES_LIST_API)
-      .then((response) => {
-        if (!response.ok) throw new Error(`Errore: ${response.status}`);
-        return response.json();
-      })
-      .then((data) => {
-        setList(data as EmployeeListQuery[]);
-      })
-      .catch((err: Error) => setError(err.message))
-      .finally(() => setLoading(false));
-  }, []);
+  //memo columns
+  const columns = useMemo<TableColumn<EmployeeListQuery>[]>(() => [
+    { field: "code", headerName: "Code", renderCell: (row) => row.code},
+    { field: "firstName", headerName: "FirstName", renderCell: (row) => row.firstName},
+    { field: "lastName", headerName: "LastName", renderCell: (row) => row.lastName},
+    { field: "address", headerName: "Address", renderCell: (row) => row.address},
+    { field: "email", headerName: "Email", renderCell: (row) => row.email},
+    { field: "phone", headerName: "Phone", renderCell: (row) => row.phone},
+    { field: "department.code", headerName: "Dep. Code", renderCell: (row) => row.department?.code || "-"},
+    { field: "department.description", headerName: "Dep. Description", renderCell: (row) => row.department?.description || "-"},
+  ], []);
 
-  //API get searched employees
-  //todo: edit BE search for optimize UX/UI experience
-  useEffect(() => {
-    setLoading(true);
-    const timer = setTimeout(() => {
-      const queryParams = new URLSearchParams();
-      if (firstName) queryParams.append("FirstName", firstName);
-      if (lastName) queryParams.append("LastName", lastName);
-
-      const queryString = queryParams.toString();
-      const url = `${EMPLOYEES_LIST_API}${queryString ? `?${queryString}` : ""}`;
-      console.log(url);
-
-      fetch(url)
-        .then((response) => response.json())
-        .then((data) => setList(data as EmployeeListQuery[]))
-        .finally(() => setLoading(false));
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [firstName, lastName]);
-
-  const columns: TableColumn<EmployeeListQuery>[] = [
-    {
-      field: "code",
-      headerName: "Code",
-      renderCell: (row) => row.code,
-    },
-    {
-      field: "firstName",
-      headerName: "FirstName",
-      renderCell: (row) => row.firstName,
-    },
-    {
-      field: "lastName",
-      headerName: "LastName",
-      renderCell: (row) => row.lastName,
-    },
-    {
-      field: "address",
-      headerName: "Address",
-      renderCell: (row) => row.address,
-    },
-    {
-      field: "email",
-      headerName: "Email",
-      renderCell: (row) => row.email,
-    },
-    {
-      field: "phone",
-      headerName: "Phone",
-      renderCell: (row) => row.phone,
-    },
-    {
-      field: "department.code",
-      headerName: "Dep. Code",
-      renderCell: (row) => row.department?.code || "-",
-    },
-    {
-      field: "department.description",
-      headerName: "Dep. Description",
-      renderCell: (row) => row.department?.description || "-",
-    },
-  ];
-
-  // Config search field
-  const searchFields: SearchField[] = [
+  //memo search filter
+  const searchFields = useMemo<SearchField[]>(() => [
     {
       name: "firstName",
       label: "First Name",
-      placeholder: "First Name...",
+      placeholder: "Search by first name...",
       value: firstName,
       onChange: setFirstName,
     },
     {
       name: "lastName",
       label: "Last Name",
-      placeholder: "Last Name...",
+      placeholder: "Search by last name...",
       value: lastName,
       onChange: setLastName,
     },
-  ];
+  ], [firstName, lastName]);
 
-  // ✅ XML export function with metadata
-  const handleExport = async () => {
-    //isExporting(true);
-    try {
-      // Filtra la lista in base ai criteri di ricerca (opzionale)
-      const filteredList = list.filter((employee) => {
-        // Se firstName della ricerca esiste, controlla il match, altrimenti passa true
-        const matchFirstName = firstName
-          ? employee.firstName?.toLowerCase().includes(firstName.toLowerCase())
-          : true;
+  const handleExport = () => {
+    exportToXML(list, {
+      filename: `employees_${new Date().toISOString().split("T")[0]}.xml`,
+    });
 
-        // Stessa logica per lastName
-        const matchLastName = lastName
-          ? employee.lastName?.toLowerCase().includes(lastName.toLowerCase())
-          : true;
-
-        return matchFirstName && matchLastName;
-      });
-
-      exportToXML(filteredList, {
-        filename: `employees_${new Date().toISOString().split("T")[0]}.xml`,
-        rootElement: "Employees",
-        itemElement: "Employee",
-        includeMetadata: true,
-        companyName: "InfoMinds",
-        exportedBy: "Fabio_Curci",
-        version: "1.0",
-      });
-
-      alert(`Export complete! ${filteredList.length} record exported.`);
-    } finally {
-      //setIsExporting(false);
-    }
+    setToast({
+      open: true,
+      message: `Export complete! ${list.length} records exported.`,
+    });
   };
 
   return (
     <>
-      <Header title="Employees" />
+      <Header title={PAGE_TITLE} />
 
       <DataTable
         columns={columns}
@@ -166,6 +85,12 @@ export default function EmployeeListPage() {
           exportLabel: "Export",
           isExporting: isExporting,
         }}
+      />
+
+      <AppToast
+        open={toast.open}
+        message={toast.message}
+        onClose={() => setToast((prev) => ({ ...prev, open: false }))}
       />
     </>
   );

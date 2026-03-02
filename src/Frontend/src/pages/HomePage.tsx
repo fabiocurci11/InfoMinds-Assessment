@@ -1,10 +1,16 @@
-import { Typography } from "@mui/material";
+import Header from "../components/ui/Header";
+
+
+const PAGE_TITLE: string = "Welcome to the Test Application"
 
 export default function HomePage() {
   
     return (
       <>
-        <Typography variant="h1" sx={{textAlign: "center", mt: 10}}>Welcome to the Test Application</Typography>
+        <Header 
+        variant="h1"
+        sx={{textAlign: "center", mt: 10}} 
+        title={PAGE_TITLE} />
       </>
     )
   }
