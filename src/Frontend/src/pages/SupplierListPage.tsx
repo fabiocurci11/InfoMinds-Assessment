@@ -1,61 +1,37 @@
-import { useEffect, useState } from "react";
-
-import DataTable from "../components/DataTable";
-import { TableColumn } from "../types/table";
+import { useMemo } from "react";
 import { SupplierListQuery } from "../types/supplier";
+import { TableColumn } from "../types/table";
+import { useFetch } from "../hooks/useFetch";
+import DataTable from "../components/ui/Table/DataTable";
 import Header from "../components/ui/Header";
 
-
-const SUPPLIERS_API: string = "/api/suppliers/list";
+const SUPPLIERS_API_URL = "/api/suppliers/list";
+const PAGE_TITLE = 'Suppliers';
+const FETCH_PARAMS = {}; 
 
 export default function SupplierListPage() {
-  const [list, setList] = useState<SupplierListQuery[]>([]);
-  const [loading, setLoading] = useState(true);
+  
+  const { data: list, loading, error } = useFetch<SupplierListQuery>(
+    SUPPLIERS_API_URL, 
+    FETCH_PARAMS
+  );
 
-  const pageTitle: string = 'Suppliers'
-
-  //API get suppliers
-  useEffect(() => {
-    fetch(SUPPLIERS_API)
-      .then((response) => {
-        return response.json();
-      })
-      .then((data) => {
-        setList(data as SupplierListQuery[]);
-      })
-      .finally(() => setLoading(false));
-  }, []);
-
-  //Configure table column for DataTable component
-  const columns: TableColumn<SupplierListQuery>[] = [
-    { field: 'name', 
-      headerName: 'Name' ,
-      renderCell: (row) => row.name  
-    },
-    { field: 'address', 
-      headerName: 'Address',
-      renderCell: (row) => row.address  
-    },
-    { field: 'email',
-      headerName: 'Email',
-    renderCell: (row) => row.email  
-   },
-    { field: 'phone', 
-      headerName: 'Phone',
-      renderCell: (row) => row.phone  
-    }
-  ];
+  const columns = useMemo<TableColumn<SupplierListQuery>[]>(() => [
+    { field: 'name', headerName: 'Name', renderCell: (row) => row.name },
+    { field: 'address', headerName: 'Address', renderCell: (row) => row.address },
+    { field: 'email', headerName: 'Email', renderCell: (row) => row.email },
+    { field: 'phone', headerName: 'Phone', renderCell: (row) => row.phone }
+  ], []);
 
   return (
     <>
-      <Header title={pageTitle}/>
+      <Header title={PAGE_TITLE}/>
       <DataTable
         loading={loading} 
+        error={error} 
         columns={columns} 
-        data={list} />
+        data={list} 
+      />
     </>
-    )
+  );
 }
-
-
-

@@ -30,13 +30,14 @@ export function useExportXML<T>() {
   const exportToXML = useCallback(
     (data: T[], options?: ExportOptions) => {
       const {
+        //default value
         filename = `export_${new Date().toISOString().split('T')[0]}.xml`,
-        rootElement = 'Items',
-        itemElement = 'Item',
-        includeMetadata = false,      
-        companyName = 'Company', 
-        exportedBy = 'User',        
-        version = '1.0',              
+        rootElement = 'Employees',   
+        itemElement = 'Employee',     
+        includeMetadata = true,      
+        companyName = 'InfoMinds',    
+        exportedBy = 'Fabio_Curci',   
+        version = '1.0',            
       } = options || {};
 
       if (!data || data.length === 0) {
@@ -61,7 +62,6 @@ export function useExportXML<T>() {
           },
         };
 
-        //metadata logic
         if (includeMetadata) {
           xmlData.Export = {
             Metadata: {
@@ -85,7 +85,7 @@ export function useExportXML<T>() {
 
         const xmlString = builder.build(xmlData);
 
-        //download xml logic
+        //download file
         const blob = new Blob([xmlString], { type: 'application/xml' });
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -96,11 +96,8 @@ export function useExportXML<T>() {
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
 
-        console.log(`Export done: ${data.length} record`);
       } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Error in export';
-        setError(errorMessage);
-        console.error('Error export:', err);
+        setError(err instanceof Error ? err.message : 'Error in export');
       } finally {
         setIsExporting(false);
       }
@@ -108,14 +105,5 @@ export function useExportXML<T>() {
     []
   );
 
-  const resetError = useCallback(() => {
-    setError(null);
-  }, []);
-
-  return {
-    exportToXML,
-    isExporting,
-    error,
-    resetError,
-  };
+  return { exportToXML, isExporting, error };
 }
