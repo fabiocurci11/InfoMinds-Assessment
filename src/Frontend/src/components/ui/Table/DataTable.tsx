@@ -7,13 +7,13 @@ import {
   TableRow,
   Paper,
   Stack,
-  TextField,
-  Button,
-  CircularProgress,
   Typography,
   styled,
 } from "@mui/material";
-import { BaseEntity, TableColumn, DataTableConfig } from "../types/table";
+import { BaseEntity, TableColumn, DataTableConfig } from "../../../types/table";
+import AppButton from "../AppButton";
+import InputField from "../InputField";
+import TableSkeleton from "./TableSkeleton";
 
 const StyledTableHeadCell = styled(TableCell)(({ theme }) => ({
   fontWeight: "bold",
@@ -25,7 +25,7 @@ interface DataTableProps<T extends BaseEntity> {
   columns: TableColumn<T>[];
   data: T[];
   loading: boolean;
-  error?: boolean | string;
+  error?: string | boolean | null | undefined;
   config?: DataTableConfig;
 }
 
@@ -59,14 +59,12 @@ export default function DataTable<T extends BaseEntity>({
           {showSearch && (
             <Stack direction="row" gap={2}>
               {searchFields.map((field) => (
-                <TextField
+                <InputField
                   key={field.name}
-                  variant="outlined"
-                  placeholder={field.placeholder}
                   label={field.label}
-                  size="small"
+                  placeholder={field.placeholder}
                   value={field.value}
-                  onChange={(e) => field.onChange(e.target.value)}
+                  onChange={field.onChange}
                 />
               ))}
             </Stack>
@@ -74,14 +72,12 @@ export default function DataTable<T extends BaseEntity>({
 
           {/* Export Button */}
           {showExport && (
-            <Button
-              variant="contained"
+            <AppButton
+              label={exportLabel}
               onClick={onExport}
               disabled={loading || data.length === 0 || isExporting}
               sx={{ ml: showSearch ? 0 : "auto" }}
-            >
-              {isExporting ? "Exporting..." : exportLabel}
-            </Button>
+            />
           )}
         </Stack>
       )}
@@ -104,14 +100,10 @@ export default function DataTable<T extends BaseEntity>({
           <TableBody>
             {/* Loading State */}
             {loading ? (
-              <TableRow>
-                <TableCell colSpan={columns.length}>
-                  <Stack alignItems="center" sx={{ py: 6 }}>
-                    <CircularProgress />
-                  </Stack>
-                </TableCell>
-              </TableRow>
-            ) : /* Error State */ error ? (
+              <TableSkeleton columnsCount={columns.length} rowCount={8} />
+            ) : 
+            /* Error State */ 
+            error ? (
               <TableRow>
                 <TableCell colSpan={columns.length}>
                   <Stack alignItems="center" spacing={2} sx={{ py: 6 }}>
@@ -141,12 +133,10 @@ export default function DataTable<T extends BaseEntity>({
                 >
                   {columns.map((column) => (
                     <TableCell key={column.field}>
-                      {
-                        column.renderCell
-                          ? column.renderCell(row)
-                          : ((row[column.field as keyof T] ??
-                              "-") as React.ReactNode)
-                      }
+                      {column.renderCell
+                        ? column.renderCell(row)
+                        : ((row[column.field as keyof T] ??
+                            "-") as React.ReactNode)}
                     </TableCell>
                   ))}
                 </TableRow>
